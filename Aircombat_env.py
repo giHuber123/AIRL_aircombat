@@ -29,7 +29,7 @@ class FlightEnv(gym.Env):
         self.observation_space = gym.spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(14,),
+            shape=(12,),
             dtype=np.float32
         )
 
@@ -48,7 +48,7 @@ class FlightEnv(gym.Env):
 
     def reset(self):
         self.fdm["ic/h-sl-ft"] = 20000
-        self.fdm['ic/lat-geod-deg'] = 60.0
+        self.fdm['ic/lat-geod-deg'] = 60.1
         self.fdm["ic/psi-true-deg"] = 180.0
         self.fdm['ic/long-gc-deg'] = 120.0
         self.fdm['ic/vt-fps'] = 800
@@ -151,8 +151,7 @@ class FlightEnv(gym.Env):
 
         ego_altitude = self.fdm['position/h-sl-ft']
         opp_altitude = opp_alt
-        delta_altitude = opp_altitude - ego_altitude
-        delta_altitude *= delta_altitude * 0.3048
+        delta_altitude = opp_altitude - ego_altitude * 0.3048
 
         opp_latitude = opp_lat
         opp_longitude = opp_lon
@@ -258,9 +257,12 @@ class FlightEnv(gym.Env):
 if __name__ == "__main__":
     env = FlightEnv()
     obs = env.reset()
+    print(f"{env.opp_trajectories[env.opp_ptr]}")
+    print(f"obs{obs}")
     while True:
         action = env.action_space.sample()
         obs, reward, truncated, terminated, info = env.step(action)
+        print(f"{env.opp_ptr}")
         if truncated:
             print("truncated")
             break
