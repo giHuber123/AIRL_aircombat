@@ -49,7 +49,8 @@ class FlightEnv(gym.Env):
 
         self.reset()
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
         self.fdm["ic/h-sl-ft"] = 20000
         self.fdm['ic/lat-geod-deg'] = 60.1
         self.fdm["ic/psi-true-deg"] = 180.0
@@ -66,7 +67,8 @@ class FlightEnv(gym.Env):
         self.opp_ptr = 0  # 重置指针
         self.current_step = 0
         obs = self.get_observation()
-        return obs
+
+        return obs, {}
 
     def get_observation(self):
         '''
@@ -103,11 +105,16 @@ class FlightEnv(gym.Env):
         obs[11] = self.fdm['velocities/vc-fps'] * 0.3048
 
         if self.norm_mean is not None:
+            # 1. 基础 Z-Score 归一化
             normalized_obs = (obs - self.norm_mean) / self.norm_std
-            print(f"**************************")
-            print(f"step:{self.current_step}")
-            print(f"raw_obs:{obs}")
-            print(f"normalized_obs:{normalized_obs}")
+
+            # 2. 截断处理：限制在正负 10 之间
+            # 专家数据归一化后大多在 [-2, 2]，10 已经是非常严厉的惩罚信号了
+            normalized_obs = np.clip(normalized_obs, -10.0, 10.0)
+            # # 打印调试（可选，但在正式训练时建议注释掉，否则刷屏影响性能）
+            # if self.current_step % 100 == 0:  # 每 100 步打印一次即可
+            #     print(f"step:{self.current_step} | normalized_obs_max:{np.max(np.abs(normalized_obs))}")
+
             return normalized_obs.astype(np.float32)
 
         return obs
