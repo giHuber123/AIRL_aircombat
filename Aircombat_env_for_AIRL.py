@@ -9,7 +9,7 @@ from pyarrow import float32
 
 
 class FlightEnv(gym.Env):
-    def __init__(self, norm_mean=None, norm_std=None):
+    def __init__(self):
         self.fdm = FGFDMExec('jsbsim-master')
         self.fdm.set_debug_level(0)
         self.fdm.load_model('f16')
@@ -44,8 +44,8 @@ class FlightEnv(gym.Env):
 
         self.opp_ptr = 0  # 轨迹指针，从0开始
 
-        self.norm_mean = norm_mean
-        self.norm_std = norm_std
+        self.norm_mean = None
+        self.norm_std = None
 
         self.reset()
 
@@ -88,10 +88,10 @@ class FlightEnv(gym.Env):
 
         delta_altitude, delta_heading, delta_velocity = self.get_delta_value()
         obs = np.zeros(12)
-        obs[0] = delta_altitude
+        obs[0] = delta_altitude / 1000.0
         obs[1] = self.in_range_rad(delta_heading)
-        obs[2] = delta_velocity
-        obs[3] = self.fdm['position/h-sl-ft'] * 0.3048
+        obs[2] = delta_velocity / 340
+        obs[3] = self.fdm['position/h-sl-ft'] * 0.3048 / 5000
         roll = self.fdm['attitude/phi-rad']
         pitch = self.fdm['attitude/theta-rad']
         obs[4] = np.sin(roll)
@@ -99,25 +99,12 @@ class FlightEnv(gym.Env):
         obs[6] = np.sin(pitch)
         obs[7] = np.cos(pitch)
 
-        obs[8] = self.fdm['velocities/u-fps'] * 0.3048
-        obs[9] = self.fdm['velocities/v-fps'] * 0.3048
-        obs[10] = self.fdm['velocities/w-fps'] * 0.3048
-        obs[11] = self.fdm['velocities/vc-fps'] * 0.3048
+        obs[8] = self.fdm['velocities/u-fps'] * 0.3048 / 340
+        obs[9] = self.fdm['velocities/v-fps'] * 0.3048 / 340
+        obs[10] = self.fdm['velocities/w-fps'] * 0.3048 / 340
+        obs[11] = self.fdm['velocities/vc-fps'] * 0.3048 / 340
 
-        if self.norm_mean is not None:
-            # 1. 基础 Z-Score 归一化
-            normalized_obs = (obs - self.norm_mean) / self.norm_std
-
-            # 2. 截断处理：限制在正负 10 之间
-            # 专家数据归一化后大多在 [-2, 2]，10 已经是非常严厉的惩罚信号了
-            normalized_obs = np.clip(normalized_obs, -10.0, 10.0)
-            # # 打印调试（可选，但在正式训练时建议注释掉，否则刷屏影响性能）
-            # if self.current_step % 100 == 0:  # 每 100 步打印一次即可
-            #     print(f"step:{self.current_step} | normalized_obs_max:{np.max(np.abs(normalized_obs))}")
-
-            return normalized_obs.astype(np.float32)
-
-        return obs
+        return obs.astype(np.float32)
 
     def step(self, action):
         self.fdm['fcs/aileron-cmd-norm'] = action[0]
@@ -146,7 +133,7 @@ class FlightEnv(gym.Env):
         if self.fdm['position/h-sl-ft'] * 0.3048 <= 1000:
             # print(f"terminated")
             terminated = True
-        return obs, reward, truncated, terminated, {}
+        return obs, reward, terminated, truncated, {}
 
     def get_delta_value(self):
 
@@ -278,12 +265,13 @@ if __name__ == "__main__":
     obs_mean = stats['mean']
     obs_std = stats['std']
     print(f"obs_mean: {obs_mean}, obs_std: {obs_std}")
-    env = FlightEnv(obs_mean, obs_std)
+    env = FlightEnv()
     obs = env.reset()
 
     while True:
         action = env.action_space.sample()
         obs, reward, truncated, terminated, info = env.step(action)
+        print(obs)
         if truncated:
             print("truncated")
             break
