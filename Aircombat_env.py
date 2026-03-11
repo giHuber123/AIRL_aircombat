@@ -105,7 +105,7 @@ class FlightEnv(gym.Env):
         self.fdm['fcs/aileron-cmd-norm'] = action[0]
         self.fdm['fcs/elevator-cmd-norm'] = action[1]
         self.fdm['fcs/rudder-cmd-norm'] = action[2]
-        self.fdm['fcs/throttle-cmd-norm'] = action[3] #(action[3] + 1.0) * 0.5
+        self.fdm['fcs/throttle-cmd-norm'] = (action[3] + 1.0) * 0.5
         for _ in range(12):
             self.fdm.run()
         self.current_step += 1
