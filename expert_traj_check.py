@@ -46,11 +46,12 @@ def check_expert_data(pkl_path):
 
                 # 格式化打印 obs 和 action (只显示前 4 位防止刷屏)
 
-                obs_preview = step['obs'][:4]
+                obs_preview = step['obs']
                 act_preview = step['action']
+                next_obs_preview = step['next_obs']
                 done_val = step['done']
 
-                print(f"[{prefix}] Obs: {obs_preview}... | Act: {act_preview} | Done: {done_val}")
+                print(f"[{prefix}] Obs: {obs_preview}... | Act: {act_preview} | Next_Obs: {next_obs_preview} | Done: {done_val}")
 
         # --- 3. 基础统计检查 ---
         all_obs = np.array([s['obs'] for s in sample_ep])
